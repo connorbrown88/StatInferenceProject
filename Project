@@ -1,0 +1,279 @@
+# hello-world
+#Cocaine Gene Expression Project 
+
+#This project looks at expression levels of different mRNA's in a cocaine addict group and a control group,
+#and identifies those mRNA's that have the highest %-wise increase between the two groups. 
+
+
+
+
+setwd("~/Downloads")
+cocO <- read.csv("cocaine2.csv", header=TRUE)
+
+#x is gene names
+x <- cocO$X
+
+coc <- as.data.frame(t(cocO[1:nrow(cocO), 2:ncol(cocO)]))
+
+colnames(coc) <- x
+
+#converts expression levels from factors to numbers
+coc[,-1] <- lapply(coc[,-1], function(x) as.numeric(as.character(x)))
+
+
+#view top left corner of coc dataframe
+coc[c(1:5),c(1:7)]
+
+
+#Makes 2 subset dataframes for the cocaines and the controls.
+
+cocaine <- subset(coc, DiseaseState == "cocaine")
+#cocaine <- disease == "cocaine"
+
+control <- subset(coc, DiseaseState == "control")
+#control <- disease == "control"
+
+
+##########################################################################################
+
+#Make vectors for cocMeans, cocaineMeans, controlMeans, difMeans, ABSdifMeans
+cocMeans <- colMeans(coc[ , c(2:ncol(coc))])
+cocaineMeans <- colMeans(cocaine[ , c(2:ncol(coc))])
+controlMeans <- colMeans(control[ , c(2:ncol(coc))])
+difMeans <- (cocaineMeans - controlMeans) / (controlMeans)
+ABSdifMeans <- abs((cocaineMeans - controlMeans) / (controlMeans))
+
+install.packages("Rfast")
+library(Rfast)
+
+#Convert cocaine and control df's to a matrices so we can use the colskewness/colkurtosis functions
+cocaineMatrix <- data.matrix(cocaine[ , c(2:ncol(coc))], rownames.force = NA)
+controlMatrix <- data.matrix(control[ , c(2:ncol(coc))], rownames.force = NA)
+
+cocaineMeds <-  colMedians(cocaineMatrix, na.rm = FALSE)
+cocaineSkews <- colskewness(cocaineMatrix, pvalue = FALSE)
+cocaineKurts <- colkurtosis(cocaineMatrix, pvalue = FALSE)
+
+controlMeds <-  colMedians(controlMatrix, na.rm = FALSE)
+controlSkews <- colskewness(controlMatrix, pvalue = FALSE)
+controlKurts <- colkurtosis(controlMatrix, pvalue = FALSE)
+
+
+
+
+#makes histogram and boxplot for the expression levels 
+hist(cocMeans, breaks=7500, xlim=c(0,1000), xlab = "Expression Level", ylab="Frequency", main="Distribution of Expression Levels for all mRNA's")
+hist(cocMeans, breaks=7500, xlim=c(0,10000), xlab = "Expression Level", ylab="Frequency", main="Distribution of Expression Levels for all mRNA's")
+boxplot(cocMeans, ylim=c(0, 500), ylab="Expression Level", main="Distribution of Expression Levels for all mRNA's")
+
+#This is a histogram and boxplot of the expression levels for all genes including cocaine group, and control group.
+#The IQR for expression levels is between 135.7 to 240.8, and above 400 is considered to be outliers. 
+
+
+hist(ABSdifMeans, breaks=150000, xlim=c(0,13), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels")
+hist(ABSdifMeans, breaks=150000, xlim=c(0,1.5), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels")
+boxplot(ABSdifMeans, ylim=c(0, 0.1), ylab="Expression Difference", main="Distribution of differences in Expression Levels")
+
+#This is a histogram and boxplot for the absolute value of the expression level differences between the cocaine group and the control group.
+#The IQR is between 1.034% and 3.876% for the mRNA's, and the mean difference is 2.248%. Anything above 10% is considered to be outliers. 
+#The histogram and boxplot below display the same data, except without absolute value. 
+
+hist(difMeans, breaks=150000, xlim=c(-5,20), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels b/w cocaine and control groups")
+hist(difMeans, breaks=150000, xlim=c(-1.5,1.5), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels b/w cocaine and control groups")
+boxplot(difMeans, ylim=c(-0.2, 0.2), ylab="Expression Difference", main="Distribution of differences in Expression Levels b/w cocaine and control groups")
+
+
+summary(cocMeans, na.rm=TRUE)
+summary(cocaineMeds, na.rm=TRUE)
+summary(cocaineMeans, na.rm=TRUE)
+summary(cocaineSkews, na.rm=TRUE)
+summary(cocaineKurts, na.rm=TRUE)
+summary(controlMeds, na.rm=TRUE)
+summary(controlMeans, na.rm=TRUE)
+summary(controlSkews, na.rm=TRUE)
+summary(controlKurts, na.rm=TRUE)
+summary(ABSdifMeans, na.rm=TRUE)
+summary(difMeans, na.rm=TRUE)
+
+
+#Returns the index for the ABSdifMeans outliers
+OutVals = boxplot(ABSdifMeans)$out
+which(ABSdifMeans %in% OutVals)
+#There are 4345 outliers
+
+
+#Make new matrix
+l <- list(cocMeans, cocaineMeds, cocaineMeans, cocaineSkews, cocaineKurts, controlMeds, controlMeans, controlSkews, controlKurts, ABSdifMeans, difMeans)
+B <- do.call(rbind, l)
+rownames(B) <- c("cocMeans", "cocaineMeds", "cocaineMeans", "cocaineSkews", "cocaineKurts", "controlMeds", "controlMeans", "controlSkews", "controlKurts", "ABSdifMeans", "difMeans")
+
+
+#Try to see how it works
+B[1:11, 2:6]
+
+#Above is the left side of a table containing the medians, means, skewness, and kurtosis for 
+#both the cocaine group and control group for all of the mRNA's. You can search by which mRNA 
+#you are interested in easily, as shown below. 
+
+B[1:11, "NRP2"]
+B["cocaineSkews", "NRP2"]
+B["ABSdifMeans", 1:100]
+str(B)
+
+
+
+#Identifies the mRNA's that have a 2-fold increase in expression b/w the cocaine and control groups.
+
+w<- colnames(B)[B["difMeans", ] >= 1.0]
+w
+w2 <- w[!w %in% c(NA)]
+length(w2)
+w2
+#There are 28 mRNA's with a 2 fold increase in expression
+
+
+#Looking at some of the mRNA's
+B[1:11, "FOS"]
+B[1:11, "FOSB"]
+B[1:11, "JUN"]
+
+
+#I then went online and did research on the mRNA's and noticed that many of them fell into the same categories.
+#I classified them by categories(Cell Cycle Progression/Differentation, Immune/Inflammatory Response, Protein Degradation, and Misc).
+#I have attached an excel spreadsheet with the classifications. 
+
+
+categories <- c("Cell Cycle Progression/Differentation"=10, "Immune/Inflammatory Response"=8, "Protein Degradation"=6, "Misc"=4)
+barplot(categories, cex.names=0.5, ylab="# of mRNA's", xlab="Category", main="# of mRNA's (by Category) w/ at Least 2x Expression Level in Cocaine")
+
+
+
+
+
+#Because FOS, FOSB, and JUN all form the AP-1 transcription factor complex together, I'm going to
+#create confidence intervals for the three of them (cocaine and control)
+
+calc_Interval<- function(n, xbar, sigma, confInterval)
+{
+  z = qnorm(    (((100-confInterval)/100) / 2)    )
+  error = z * sigma/sqrt(n)
+  U = xbar + error
+  L = xbar - error
+  print(paste("There is", confInterval, "% confidence that the population mean is between", U, "and", L))
+}
+
+calc_Interval(30, mean(cocaine$FOS), sd(cocaine$FOS), 95)
+calc_Interval(30, mean(control$FOS), sd(control$FOS), 95)
+calc_Interval(30, mean(cocaine$FOSB), sd(cocaine$FOSB), 95)
+calc_Interval(30, mean(control$FOSB), sd(control$FOSB), 95)
+calc_Interval(30, mean(cocaine$JUN), sd(cocaine$JUN), 95)
+calc_Interval(30, mean(control$JUN), sd(control$JUN), 95)
+
+
+
+
+#Now I am going to test for statistical significance between the expression levels for the 3 mRNA's
+#between the cocaine and control groups. I will use alpha = 0.05
+
+
+twoMeansDiffSD <- function(n1, mean1, sd1, n2, mean2, sd2, alpha){
+  t = (mean1 - mean2) / sqrt((sd1**2/n1) + (sd2**2/n2))
+  r = (((sd1**2/n1) + (sd2**2/n2))**2)  / (( ((sd1**2/n1)**2) / (n1-1) ) + (((sd2**2/n2)**2) / (n2-1)))
+  t_dist = qt(1-(alpha/2), r)
+  
+  return(print(paste("The test-statistic, t, is: ", t, "with r=", r, "degrees of freedom, and t",(alpha/2),",",r,"=",t_dist)))
+}
+
+
+#Here we test to see if the difference between the two means of FOS expression is statistically
+#significant between the control and cocaine goups. 
+twoMeansDiffSD(30, mean(cocaine$FOS), sd(cocaine$FOS), 30, mean(control$FOS), sd(control$FOS), 0.05)
+#Because the test statistic is greater than tα/2,29, we reject the null hypothesis, that the 
+#two means are equal. 
+
+#Here we test to see if the difference between the two means of FOSB expression is statistically
+#significant between the control and cocaine goups. 
+twoMeansDiffSD(30, mean(cocaine$FOSB), sd(cocaine$FOSB), 30, mean(control$FOSB), sd(control$FOSB), 0.05)
+#Because the test statistic is greater than tα/2,30, we reject the null hypothesis, that the 
+#two means are equal. 
+
+#Here we test to see if the difference between the two means of JUN expression is statistically
+#significant between the control and cocaine goups. 
+twoMeansDiffSD(30, mean(cocaine$JUN), sd(cocaine$JUN), 30, mean(control$JUN), sd(control$JUN), 0.05)
+#Because the test statistic is greater than tα/2,30, we reject the null hypothesis, that the 
+#two means are equal. 
+
+
+
+
+
+#Now I will re-name all of the mRNA's with their classifications to do ANOVA
+abz <- ABSdifMeans[c(w2)]
+df <- stack(abz)
+df <- setNames(stack(abz)[2:1], c('mRNA','difMeans'))
+df
+str(df)
+
+install.packages("plyr")
+library(plyr)
+
+revalue(df$mRNA, c("FOSB" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("FOS" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("JUN" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("EGR1" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("S100A8" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("CDKN1A.1" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("RN7SK" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("RN7SK.1" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("GADD45B" = "cellCycle")) -> df$mRNA
+revalue(df$mRNA, c("TM4SF1" = "cellCycle")) -> df$mRNA
+
+revalue(df$mRNA, c("IL6" = "Immune")) -> df$mRNA
+revalue(df$mRNA, c("CXCL8" = "Immune")) -> df$mRNA
+revalue(df$mRNA, c("CXCL8.1" = "Immune")) -> df$mRNA
+revalue(df$mRNA, c("IL1B" = "Immune")) -> df$mRNA
+revalue(df$mRNA, c("SELE.1" = "Immune")) -> df$mRNA
+revalue(df$mRNA, c("CCL2" = "Immune")) -> df$mRNA
+revalue(df$mRNA, c("HAMP" = "Immune")) -> df$mRNA
+revalue(df$mRNA, c("C10orf10" = "Immune")) -> df$mRNA
+
+revalue(df$mRNA, c("BAG3" = "Protein")) -> df$mRNA
+revalue(df$mRNA, c("HSPA6" = "Protein")) -> df$mRNA
+revalue(df$mRNA, c("HSPA6.1" = "Protein")) -> df$mRNA
+revalue(df$mRNA, c("DNAJB1" = "Protein")) -> df$mRNA
+revalue(df$mRNA, c("HSPA1B" = "Protein")) -> df$mRNA
+revalue(df$mRNA, c("HSPA1A" = "Protein")) -> df$mRNA
+
+revalue(df$mRNA, c("CSRNP1" = "misc")) -> df$mRNA
+revalue(df$mRNA, c("EMP1" = "misc")) -> df$mRNA
+revalue(df$mRNA, c("ATF3.1" = "misc")) -> df$mRNA
+revalue(df$mRNA, c("SERPINH1" = "misc")) -> df$mRNA
+
+df
+
+analvar <- aov(difMeans~mRNA, data=df)
+plot(difMeans~mRNA, data=df, main="ANOVA for the 4 Classifications of Genes")
+summary(analvar)
+model.tables(analvar, "means")
+
+#The null hypothesis is that the mean expression change is the same for all classifications. 
+#The alternate hypothesis is that the means are not the same. The p-value is 0.422, so we
+#fail to reject the null hypothesis.
+
+posthocAnalvar <- TukeyHSD(analvar)
+posthocAnalvar
+plot(posthocAnalvar)
+
+#I wanted to see if the the difference between protein and immune was statistically significant,
+#but after conducting a t test that returned a p-value of 0.4131, we reject the null hypothesis.
+
+
+mRNA <- df$mRNA
+protein <- subset(df, mRNA == "Protein")
+immune <- subset(df, mRNA == "Immune")
+
+t.test(protein$difMeans, immune$difMeans)
+
+
+
+##THANK YOU
