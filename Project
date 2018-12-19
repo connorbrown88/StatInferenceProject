@@ -43,8 +43,13 @@ controlMeans <- colMeans(control[ , c(2:ncol(coc))])
 difMeans <- (cocaineMeans - controlMeans) / (controlMeans)
 ABSdifMeans <- abs((cocaineMeans - controlMeans) / (controlMeans))
 
+
+install.packages("e1071")
+library(e1071) 
 install.packages("Rfast")
 library(Rfast)
+
+
 
 #Convert cocaine and control df's to a matrices so we can use the colskewness/colkurtosis functions
 cocaineMatrix <- data.matrix(cocaine[ , c(2:ncol(coc))], rownames.force = NA)
@@ -60,27 +65,47 @@ controlKurts <- colkurtosis(controlMatrix, pvalue = FALSE)
 
 
 
-
 #makes histogram and boxplot for the expression levels 
 hist(cocMeans, breaks=7500, xlim=c(0,1000), xlab = "Expression Level", ylab="Frequency", main="Distribution of Expression Levels for all mRNA's")
 hist(cocMeans, breaks=7500, xlim=c(0,10000), xlab = "Expression Level", ylab="Frequency", main="Distribution of Expression Levels for all mRNA's")
 boxplot(cocMeans, ylim=c(0, 500), ylab="Expression Level", main="Distribution of Expression Levels for all mRNA's")
 
+skewness(cocMeans, na.rm = TRUE)
+
 #This is a histogram and boxplot of the expression levels for all genes including cocaine group, and control group.
 #The IQR for expression levels is between 135.7 to 240.8, and above 400 is considered to be outliers. 
+OutVals1 = boxplot(cocMeans)$out
+which(cocMeans %in% OutVals1)
+#There are 8542 outliers
 
 
+
+
+#makes histogram and boxplot for the differences in expression levels 
 hist(ABSdifMeans, breaks=150000, xlim=c(0,13), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels")
 hist(ABSdifMeans, breaks=150000, xlim=c(0,1.5), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels")
 boxplot(ABSdifMeans, ylim=c(0, 0.1), ylab="Expression Difference", main="Distribution of differences in Expression Levels")
 
+skewness(ABSdifMeans, na.rm = TRUE)
+
+#Returns the index for the ABSdifMeans outliers
+OutVals2 = boxplot(ABSdifMeans)$out
+which(ABSdifMeans %in% OutVals2)
+#There are 4345 outliers
+
 #This is a histogram and boxplot for the absolute value of the expression level differences between the cocaine group and the control group.
 #The IQR is between 1.034% and 3.876% for the mRNA's, and the mean difference is 2.248%. Anything above 10% is considered to be outliers. 
+#There is strong, right skewness as indicated by the positive value for g1. 
 #The histogram and boxplot below display the same data, except without absolute value. 
+
 
 hist(difMeans, breaks=150000, xlim=c(-5,20), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels b/w cocaine and control groups")
 hist(difMeans, breaks=150000, xlim=c(-1.5,1.5), xlab = "Expression Difference", ylab="Frequency", main="Distribution of differences in Expression Levels b/w cocaine and control groups")
 boxplot(difMeans, ylim=c(-0.2, 0.2), ylab="Expression Difference", main="Distribution of differences in Expression Levels b/w cocaine and control groups")
+
+
+
+
 
 
 summary(cocMeans, na.rm=TRUE)
@@ -96,10 +121,6 @@ summary(ABSdifMeans, na.rm=TRUE)
 summary(difMeans, na.rm=TRUE)
 
 
-#Returns the index for the ABSdifMeans outliers
-OutVals = boxplot(ABSdifMeans)$out
-which(ABSdifMeans %in% OutVals)
-#There are 4345 outliers
 
 
 #Make new matrix
@@ -170,8 +191,6 @@ calc_Interval(30, mean(cocaine$JUN), sd(cocaine$JUN), 95)
 calc_Interval(30, mean(control$JUN), sd(control$JUN), 95)
 
 
-
-
 #Now I am going to test for statistical significance between the expression levels for the 3 mRNA's
 #between the cocaine and control groups. I will use alpha = 0.05
 
@@ -194,13 +213,13 @@ twoMeansDiffSD(30, mean(cocaine$FOS), sd(cocaine$FOS), 30, mean(control$FOS), sd
 #Here we test to see if the difference between the two means of FOSB expression is statistically
 #significant between the control and cocaine goups. 
 twoMeansDiffSD(30, mean(cocaine$FOSB), sd(cocaine$FOSB), 30, mean(control$FOSB), sd(control$FOSB), 0.05)
-#Because the test statistic is greater than tα/2,30, we reject the null hypothesis, that the 
+#Because the test statistic is greater than tα/2,29, we reject the null hypothesis, that the 
 #two means are equal. 
 
 #Here we test to see if the difference between the two means of JUN expression is statistically
 #significant between the control and cocaine goups. 
 twoMeansDiffSD(30, mean(cocaine$JUN), sd(cocaine$JUN), 30, mean(control$JUN), sd(control$JUN), 0.05)
-#Because the test statistic is greater than tα/2,30, we reject the null hypothesis, that the 
+#Because the test statistic is greater than tα/2,29, we reject the null hypothesis, that the 
 #two means are equal. 
 
 
@@ -277,3 +296,4 @@ t.test(protein$difMeans, immune$difMeans)
 
 
 ##THANK YOU
+
